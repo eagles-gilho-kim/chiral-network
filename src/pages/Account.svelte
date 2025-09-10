@@ -101,7 +101,7 @@
     }
 
     // Amount validation
-    if (rawAmountInput === '' || rawAmountInput === null || rawAmountInput === undefined) {
+    if (rawAmountInput === '') {
       validationWarning = '';
       isAmountValid = false;
       sendAmount = 0;
