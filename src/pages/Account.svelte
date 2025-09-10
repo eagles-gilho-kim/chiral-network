@@ -92,13 +92,16 @@
     } else if (recipientAddress.length !== 42) {
       addressWarning = 'Address must be exactly 42 characters long.';
       isAddressValid = false;
+    } else if (!isValidAddress(recipientAddress)) {
+      addressWarning = 'Address must contain valid hexadecimal characters (0-9, a-f, A-F)';
+      isAddressValid = false;
     } else {
       addressWarning = '';
       isAddressValid = true;
     }
 
     // Amount validation
-    if (rawAmountInput === '') {
+    if (rawAmountInput === '' || rawAmountInput === null || rawAmountInput === undefined) {
       validationWarning = '';
       isAmountValid = false;
       sendAmount = 0;
@@ -123,20 +126,6 @@
         isAmountValid = true;
         sendAmount = inputValue;
       }
-    }
-  }
-
-  // Enhanced address validation with user feedback
-  $: {
-    if (recipientAddress.trim() === '') {
-      addressWarning = '';
-      isAddressValid = true;
-    } else if (!isValidAddress(recipientAddress)) {
-      addressWarning = 'Address must contain valid hexadecimal characters (0-9, a-f, A-F)';
-      isAddressValid = false;
-    } else {
-      addressWarning = '';
-      isAddressValid = true;
     }
   }
   
@@ -457,7 +446,7 @@
   
   // Helper function to set max amount
   function setMaxAmount() {
-    rawAmountInput = $wallet.balance.toString();
+    rawAmountInput = $wallet.balance.toFixed(2);
   }
 </script>
 
@@ -605,14 +594,19 @@
             id="recipient"
             bind:value={recipientAddress}
             placeholder="0x..."
-            class="mt-2 {addressWarning ? 'border-red-500' : ''}"
+            class="mt-2"
             data-form-type="other"
             data-lpignore="true"
             aria-autocomplete="none"
           />
           <div class="flex items-center justify-between mt-1">
             <span class="text-xs text-muted-foreground">
-              {recipientAddress.length}/42 characters ({42 - recipientAddress.length} remaining)
+              {recipientAddress.length}/42 characters 
+              {#if recipientAddress.length <= 42}
+                ({42 - recipientAddress.length} remaining)
+              {:else}
+                ({recipientAddress.length - 42} over)
+              {/if}
             </span>
             {#if addressWarning}
               <p class="text-xs text-red-500 font-medium">{addressWarning}</p>
@@ -625,12 +619,11 @@
           <div class="relative mt-2">
             <Input
               id="amount"
-              type="number"
+              type="text"
+              inputmode="decimal"
               bind:value={rawAmountInput}
               placeholder=""
-              min="0.01"
-              step="0.01"
-              class="mt-2 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+              class="mt-2"
               data-form-type="other"
               data-lpignore="true"
               aria-autocomplete="none"
