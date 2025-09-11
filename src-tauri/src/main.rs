@@ -215,6 +215,11 @@ async fn get_miner_logs(data_dir: String, lines: usize) -> Result<Vec<String>, S
     get_mining_logs(&data_dir, lines)
 }
 
+#[tauri::command]
+fn detect_locale() -> String {
+    sys_locale::get_locale().unwrap_or_else(|| "en-US".into())
+}
+
 fn main() {
     println!("Starting Chiral Network...");
 
@@ -245,12 +250,14 @@ fn main() {
             get_miner_hashrate,
             get_current_block,
             get_network_stats,
-            get_miner_logs
+            get_miner_logs,
+            detect_locale
         ])
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             println!("App setup complete");
             println!("Window should be visible now!");

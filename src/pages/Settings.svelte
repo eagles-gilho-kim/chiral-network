@@ -20,6 +20,10 @@
   import { homeDir } from "@tauri-apps/api/path";
   import { getVersion } from "@tauri-apps/api/app";
   import { userLocation } from "$lib/stores";
+  import { changeLocale, loadLocale } from '../i18n/i18n';
+  import { t } from 'svelte-i18n';
+  import { get } from 'svelte/store';
+
 
   let showResetConfirmModal = false;
   // Settings state
@@ -86,6 +90,7 @@
   }
 
   async function selectStoragePath() {
+  const tr = get(t);
   try {
     // Try Tauri first
     await getVersion(); // only works in Tauri
@@ -96,7 +101,7 @@
       defaultPath: settings.storagePath.startsWith("~/")
         ? settings.storagePath.replace("~", home)
         : settings.storagePath,
-      title: "Select Storage Location",
+      title: tr("storage.selectLocationTitle"),
     });
 
     if (typeof result === "string") {
@@ -117,7 +122,7 @@
     } else {
       // Fallback: let user type path manually
       const newPath = prompt(
-        "Enter storage path (Tauri file picker not available in browser):", 
+        `${tr("storage.enterPathPrompt")} ( ${tr("storage.browserNoPicker")} )`,
         settings.storagePath
       );
       if (newPath) {
@@ -167,7 +172,7 @@
     (event.target as HTMLInputElement).value = "";
   }
 
-  onMount(() => {
+  onMount(async() => {
     // Load settings from local storage
     const stored = localStorage.getItem("chiralSettings");
     if (stored) {
@@ -177,6 +182,18 @@
       } catch (e) {
         console.error("Failed to load settings:", e);
       }
+    }
+
+    const i18nLang = await loadLocale();          // e.g. "ko" | "en" | null
+    if (i18nLang) {
+      selectedLanguage = i18nLang;
+
+      (settings as any).language = i18nLang;
+      (savedSettings as any).language = i18nLang;
+    } else if ((settings as any).language) {
+
+      selectedLanguage = (settings as any).language;
+      await changeLocale(selectedLanguage);
     }
   });
 
@@ -212,6 +229,12 @@
     errors = next;
   }
 
+  function onLanguageChange(lang: string) {
+    selectedLanguage = lang;
+    changeLocale(lang);
+    (settings as any).language = lang;
+  }
+
   // Revalidate whenever settings change
   $: validate(settings);
 
@@ -223,13 +246,13 @@
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-3xl font-bold">Settings</h1>
+      <h1 class="text-3xl font-bold">{$t("settings.title")}</h1>
       <p class="text-muted-foreground mt-2">
-        Configure your Chiral Network preferences
+        {$t("settings.subtitle")}
       </p>
     </div>
     {#if hasChanges}
-      <Badge variant="outline" class="text-orange-500">Unsaved changes</Badge>
+      <Badge variant="outline" class="text-orange-500">{$t("badges.unsaved")}</Badge>
     {/if}
   </div>
 
@@ -237,12 +260,12 @@
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
       <HardDrive class="h-5 w-5" />
-      <h2 class="text-lg font-semibold">Storage</h2>
+      <h2 class="text-lg font-semibold">{$t("storage.title")}</h2>
     </div>
 
     <div class="space-y-4">
       <div>
-        <Label for="storage-path">Storage Location</Label>
+        <Label for="storage-path">{$t("storage.location")}</Label>
         <div class="flex gap-2 mt-2">
           <Input
             id="storage-path"
@@ -250,7 +273,7 @@
             placeholder="~/ChiralNetwork/Storage"
             class="flex-1"
           />
-          <Button variant="outline" on:click={selectStoragePath}>
+          <Button variant="outline" on:click={selectStoragePath} aria-label={$t("storage.locationPick")}>
             <FolderOpen class="h-4 w-4" />
           </Button>
         </div>
@@ -258,7 +281,7 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <Label for="max-storage">Max Storage Size (GB)</Label>
+          <Label for="max-storage">{$t("storage.maxSize")}</Label>
           <Input
             id="max-storage"
             type="number"
@@ -273,7 +296,7 @@
         </div>
 
         <div>
-          <Label for="cleanup-threshold">Auto-Cleanup Threshold (%)</Label>
+          <Label for="cleanup-threshold">{$t("storage.cleanupThreshold")}</Label>
           <Input
             id="cleanup-threshold"
             type="number"
@@ -296,7 +319,7 @@
           bind:checked={settings.autoCleanup}
         />
         <Label for="auto-cleanup" class="cursor-pointer">
-          Enable automatic cleanup when storage is full
+          {$t("storage.enableCleanup")}
         </Label>
       </div>
     </div>
@@ -306,13 +329,13 @@
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
       <Wifi class="h-5 w-5" />
-      <h2 class="text-lg font-semibold">Network</h2>
+      <h2 class="text-lg font-semibold">{$t("network.title")}</h2>
     </div>
 
     <div class="space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <Label for="max-connections">Max Connections</Label>
+          <Label for="max-connections">{$t("network.maxConnections")}</Label>
           <Input
             id="max-connections"
             type="number"
@@ -327,7 +350,7 @@
         </div>
 
         <div>
-          <Label for="port">Port</Label>
+          <Label for="port">{$t("network.port")}</Label>
           <Input
             id="port"
             type="number"
@@ -335,7 +358,7 @@
             min="1024"
             max="65535"
             class="mt-2"
-          /> 
+          />
           {#if errors.port}
             <p class="mt-1 text-sm text-red-500">{errors.port}</p>
           {/if}
@@ -344,7 +367,7 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <Label for="upload-bandwidth">Upload Limit (MB/s, 0=unlimited)</Label>
+          <Label for="upload-bandwidth">{$t("network.uploadLimit")}</Label>
           <Input
             id="upload-bandwidth"
             type="number"
@@ -358,9 +381,7 @@
         </div>
 
         <div>
-          <Label for="download-bandwidth"
-            >Download Limit (MB/s, 0=unlimited)</Label
-          >
+          <Label for="download-bandwidth">{$t("network.downloadLimit")}</Label>
           <Input
             id="download-bandwidth"
             type="number"
@@ -376,19 +397,19 @@
 
       <!-- User Location -->
       <div>
-        <Label for="user-location">Your Location</Label>
+        <Label for="user-location">{$t("network.userLocation")}</Label>
         <select
           id="user-location"
           bind:value={settings.userLocation}
           class="w-full px-3 py-2 mt-2 border rounded-md bg-white"
         >
-          <option value="US-East">US East</option>
-          <option value="US-West">US West</option>
-          <option value="EU-West">Europe West</option>
-          <option value="Asia-Pacific">Asia Pacific</option>
+          <option value="US-East">{$t("regions.usEast")}</option>
+          <option value="US-West">{$t("regions.usWest")}</option>
+          <option value="EU-West">{$t("regions.euWest")}</option>
+          <option value="Asia-Pacific">{$t("regions.apac")}</option>
         </select>
         <p class="text-xs text-muted-foreground mt-1">
-          Used to prioritize geographically closer peers for better performance
+          {$t("network.locationHint")}
         </p>
       </div>
 
@@ -400,7 +421,7 @@
             bind:checked={settings.enableUPnP}
           />
           <Label for="enable-upnp" class="cursor-pointer">
-            Enable UPnP port mapping
+            {$t("network.enableUpnp")}
           </Label>
         </div>
 
@@ -411,7 +432,7 @@
             bind:checked={settings.enableNAT}
           />
           <Label for="enable-nat" class="cursor-pointer">
-            Enable NAT traversal
+            {$t("network.enableNat")}
           </Label>
         </div>
 
@@ -422,7 +443,7 @@
             bind:checked={settings.enableDHT}
           />
           <Label for="enable-dht" class="cursor-pointer">
-            Enable DHT (Distributed Hash Table)
+            {$t("network.enableDht")}
           </Label>
         </div>
       </div>
@@ -432,21 +453,22 @@
   <!-- Language Settings -->
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
-      <h2 class="text-lg font-semibold">Language</h2>
+      <h2 class="text-lg font-semibold">{$t("language.title")}</h2>
     </div>
 
     <div class="space-y-4">
       <div>
-        <Label for="language-select">Select Language</Label>
+        <Label for="language-select">{$t("language.select")}</Label>
         <select
           id="language-select"
           bind:value={selectedLanguage}
+          on:change={(e) => onLanguageChange((e.target as HTMLSelectElement).value)}
           class="w-full px-3 py-2 mt-2 border rounded-md bg-white"
         >
-          <option value="en">English</option>
-          <option value="es">Español</option>
-          <option value="zh">中文</option>
-          <option value="ko">한국어</option>
+          <option value="en">{$t("language.english")}</option>
+          <option value="es">{$t("language.spanish")}</option>
+          <option value="zh">{$t("language.chinese")}</option>
+          <option value="ko">{$t("language.korean")}</option>
         </select>
       </div>
     </div>
@@ -456,7 +478,7 @@
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
       <Shield class="h-5 w-5" />
-      <h2 class="text-lg font-semibold">Privacy & Security</h2>
+      <h2 class="text-lg font-semibold">{$t("privacy.title")}</h2>
     </div>
 
     <div class="space-y-2">
@@ -467,7 +489,7 @@
           bind:checked={settings.enableProxy}
         />
         <Label for="enable-proxy" class="cursor-pointer">
-          Enable proxy routing for anonymity
+          {$t("privacy.enableProxy")}
         </Label>
       </div>
 
@@ -478,7 +500,7 @@
           bind:checked={settings.enableEncryption}
         />
         <Label for="enable-encryption" class="cursor-pointer">
-          Enable end-to-end encryption
+          {$t("privacy.enableEncryption")}
         </Label>
       </div>
 
@@ -489,7 +511,7 @@
           bind:checked={settings.anonymousMode}
         />
         <Label for="anonymous-mode" class="cursor-pointer">
-          Anonymous mode (hide all identifying information)
+          {$t("privacy.anonymousMode")}
         </Label>
       </div>
 
@@ -500,7 +522,7 @@
           bind:checked={settings.shareAnalytics}
         />
         <Label for="share-analytics" class="cursor-pointer">
-          Share anonymous usage analytics
+          {$t("privacy.shareAnalytics")}
         </Label>
       </div>
     </div>
@@ -510,7 +532,7 @@
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
       <Bell class="h-5 w-5" />
-      <h2 class="text-lg font-semibold">Notifications</h2>
+      <h2 class="text-lg font-semibold">{$t("notifications.title")}</h2>
     </div>
 
     <div class="space-y-2">
@@ -521,7 +543,7 @@
           bind:checked={settings.enableNotifications}
         />
         <Label for="enable-notifications" class="cursor-pointer">
-          Enable desktop notifications
+          {$t("notifications.enable")}
         </Label>
       </div>
 
@@ -534,7 +556,7 @@
               bind:checked={settings.notifyOnComplete}
             />
             <Label for="notify-complete" class="cursor-pointer">
-              Notify when downloads complete
+              {$t("notifications.notifyComplete")}
             </Label>
           </div>
 
@@ -545,7 +567,7 @@
               bind:checked={settings.notifyOnError}
             />
             <Label for="notify-error" class="cursor-pointer">
-              Notify on errors
+              {$t("notifications.notifyError")}
             </Label>
           </div>
 
@@ -556,7 +578,7 @@
               bind:checked={settings.soundAlerts}
             />
             <Label for="sound-alerts" class="cursor-pointer">
-              Play sound alerts
+              {$t("notifications.soundAlerts")}
             </Label>
           </div>
         </div>
@@ -568,13 +590,13 @@
   <Card class="p-6">
     <div class="flex items-center gap-2 mb-4">
       <Database class="h-5 w-5" />
-      <h2 class="text-lg font-semibold">Advanced</h2>
+      <h2 class="text-lg font-semibold">{$t("advanced.title")}</h2>
     </div>
 
     <div class="space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <Label for="chunk-size">Chunk Size (KB)</Label>
+          <Label for="chunk-size">{$t("advanced.chunkSize")}</Label>
           <Input
             id="chunk-size"
             type="number"
@@ -589,7 +611,7 @@
         </div>
 
         <div>
-          <Label for="cache-size">Cache Size (MB)</Label>
+          <Label for="cache-size">{$t("advanced.cacheSize")}</Label>
           <Input
             id="cache-size"
             type="number"
@@ -605,16 +627,16 @@
       </div>
 
       <div class="relative">
-        <Label for="log-level">Log Level</Label>
+        <Label for="log-level">{$t("advanced.logLevel")}</Label>
         <select
           id="log-level"
           bind:value={settings.logLevel}
           class="w-full mt-2 px-3 py-2 border rounded-lg bg-background appearance-none"
         >
-          <option value="error">Error</option>
-          <option value="warn">Warning</option>
-          <option value="info">Info</option>
-          <option value="debug">Debug</option>
+          <option value="error">{$t("advanced.logError")}</option>
+          <option value="warn">{$t("advanced.logWarn")}</option>
+          <option value="info">{$t("advanced.logInfo")}</option>
+          <option value="debug">{$t("advanced.logDebug")}</option>
         </select>
         <ChevronsUpDown
           class="pointer-events-none absolute right-2 mt-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -628,18 +650,18 @@
           bind:checked={settings.autoUpdate}
         />
         <Label for="auto-update" class="cursor-pointer">
-          Automatically install updates
+          {$t("advanced.autoUpdate")}
         </Label>
       </div>
 
       <div class="flex flex-wrap gap-2">
         <Button variant="outline" size="xs" on:click={clearCache}>
           <RefreshCw class="h-4 w-4 mr-2" />
-          Clear Cache
+          {$t("advanced.clearCache")}
         </Button>
 
         <Button variant="outline" size="xs" on:click={exportSettings}>
-          Export Settings
+          {$t("advanced.exportSettings")}
         </Button>
 
         <label for="import-settings">
@@ -648,7 +670,7 @@
             size="xs"
             on:click={() => fileInputEl?.click()}
           >
-            Import Settings
+            {$t("advanced.importSettings")}
           </Button>
           <input
             bind:this={fileInputEl}
@@ -666,7 +688,7 @@
   <!-- Action Buttons -->
   <div class="flex flex-wrap items-center justify-between gap-2">
     <Button variant="outline" size="xs" on:click={openResetConfirm}>
-      Reset to Defaults
+      {$t("actions.resetDefaults")}
     </Button>
 
     <div class="flex gap-2">
@@ -676,22 +698,25 @@
         on:click={() => (settings = { ...savedSettings })}
         disabled={!hasChanges}
       >
-        Cancel
+        {$t("actions.cancel")}
       </Button>
       <Button size="xs" on:click={saveSettings} disabled={!hasChanges || !isValid}>
         <Save class="h-4 w-4 mr-2" />
-        Save Settings
+        {$t("actions.save")}
       </Button>
     </div>
   </div>
 </div>
+
 {#if showResetConfirmModal}
   <div
     class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
     role="button"
     tabindex="0"
-    on:click={() => showResetConfirmModal = false}
-    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showResetConfirmModal = false; }}
+    on:click={() => (showResetConfirmModal = false)}
+    on:keydown={(e) => {
+      if (e.key === "Enter" || e.key === " ") showResetConfirmModal = false;
+    }}
   >
     <div
       class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm"
@@ -700,25 +725,19 @@
       aria-modal="true"
       on:click|stopPropagation
       on:keydown={(e) => {
-        if (e.key === 'Escape') showResetConfirmModal = false;
+        if (e.key === "Escape") showResetConfirmModal = false;
       }}
     >
-      <h3 class="text-lg font-bold mb-2">Are you sure?</h3>
+      <h3 class="text-lg font-bold mb-2">{$t("confirm.title")}</h3>
       <p class="text-sm text-gray-600 mb-6">
-        All settings will be reset to their default values. This action will be saved immediately.
+        {$t("confirm.resetBody")}
       </p>
       <div class="flex justify-end gap-3">
-        <Button
-          variant="outline"
-          on:click={() => showResetConfirmModal = false}
-        >
-          Cancel
+        <Button variant="outline" on:click={() => (showResetConfirmModal = false)}>
+          {$t("actions.cancel")}
         </Button>
-        <Button
-          variant="destructive"
-          on:click={handleConfirmReset}
-        >
-          Confirm Reset
+        <Button variant="destructive" on:click={handleConfirmReset}>
+          {$t("actions.confirm")}
         </Button>
       </div>
     </div>
