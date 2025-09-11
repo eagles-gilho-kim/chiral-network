@@ -262,6 +262,11 @@ fn get_cpu_temperature() -> Option<f32> {
 
     None
 }
+#[tauri::command]
+fn detect_locale() -> String {
+    sys_locale::get_locale().unwrap_or_else(|| "en-US".into())
+}
+
 fn main() {
     println!("Starting Chiral Network...");
 
