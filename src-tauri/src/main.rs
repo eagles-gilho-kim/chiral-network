@@ -300,6 +300,11 @@ fn get_cpu_temperature() -> Option<f32> {
 
     None
 }
+#[tauri::command]
+fn detect_locale() -> String {
+    sys_locale::get_locale().unwrap_or_else(|| "en-US".into())
+}
+
 fn main() {
     println!("Starting Chiral Network...");
 
@@ -333,12 +338,14 @@ fn main() {
             get_miner_logs,
             get_miner_performance,
             get_blocks_mined,
-            get_cpu_temperature
+            get_cpu_temperature,
+            detect_locale
         ])
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             println!("App setup complete");
             println!("Window should be visible now!");
